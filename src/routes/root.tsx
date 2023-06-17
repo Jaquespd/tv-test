@@ -5,12 +5,15 @@ import {
   FocusDetails,
   FocusableComponentLayout,
   KeyPressDetails,
+  EnterPressHandler,
 } from "@noriginmedia/norigin-spatial-navigation";
 // import "../App.css";
 import styled, { createGlobalStyle } from "styled-components";
 import shuffle from "lodash/shuffle";
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import logo from "../logo.svg";
+import { generate as uuid } from "short-uuid";
+import { title } from "process";
 
 const AppContainer = styled.div`
   background-color: #d9d9d9;
@@ -57,12 +60,12 @@ const MenuItemInput = styled.input<MenuItemBoxProps>`
   font-size: 30px;
 `;
 
-function MenuItem() {
+function MenuItem(props: { onClick: () => void; title: string }) {
   const { ref, focused } = useFocusable();
 
   return (
-    <MenuItemBox ref={ref} focused={focused}>
-      CONNECT
+    <MenuItemBox ref={ref} focused={focused} onClick={props.onClick}>
+      {props.title}
     </MenuItemBox>
   );
 }
@@ -70,25 +73,13 @@ function MenuItem() {
 interface InputProps {
   title: string;
   color: string;
+  // autoFocus: boolean;
   onEnterPress: (props: object, details: KeyPressDetails) => void;
   onFocus: (
     layout: FocusableComponentLayout,
     props: object,
     details: FocusDetails
   ) => void;
-}
-
-function MenuInput({ title, color, onEnterPress, onFocus }: InputProps) {
-  const { ref, focused } = useFocusable({
-    onEnterPress,
-    onFocus,
-    extraProps: {
-      title,
-      color,
-    },
-  });
-
-  return <MenuItemInput placeholder={title} ref={ref} focused={focused} />;
 }
 
 interface MenuWrapperProps {
@@ -163,15 +154,61 @@ function Menu({ focusKey: focusKeyParam }: MenuProps) {
     extraProps: { foo: "bar" },
   });
 
+  const [session, setSession] = useState({ clientCode: "", deviceCode: "" });
+  const [step, setStep] = useState<"clientCode" | "deviceCode">("clientCode");
+
   useEffect(() => {
     focusSelf();
   }, [focusSelf]);
 
+  interface InputRefs {
+    [key: string]: string;
+  }
+  const inputRefs = useRef<InputRefs>({});
+
+  function MenuInput({
+    title,
+    color,
+    // autoFocus,
+    onEnterPress,
+    onFocus,
+  }: InputProps) {
+    const keyRef = uuid();
+    const { ref, focused } = useFocusable({
+      onEnterPress,
+      onFocus,
+      extraProps: {
+        title,
+        color,
+        keyRef,
+      },
+    });
+    if (inputRefs?.current) {
+      // inputRefs?.current = ref;
+    }
+
+    return (
+      <MenuItemInput
+        placeholder={title}
+        ref={ref}
+        focused={focused}
+        // id="abc"
+        // autoFocus={autoFocus}
+      />
+    );
+  }
+
   const scrollingRef: any = useRef(null);
 
-  const onAssetPress = useCallback(() => {
-    console.log("PRESS");
-  }, []);
+  const onAssetPress = useCallback(
+    (props: any, details: KeyPressDetails) => {
+      console.log("PRESS Event", props);
+      console.log(inputRefs.current);
+      // document.getElementById("abc")?.click();
+      // inputRefs?.current?[props.keyRef]?.focus();
+    },
+    [inputRefs]
+  );
 
   const onAssetFocus = useCallback(
     ({ x }: { x: number }) => {
@@ -189,22 +226,32 @@ function Menu({ focusKey: focusKeyParam }: MenuProps) {
         {/* <MenuWrapper ref={ref} hasFocusedChild={hasFocusedChild}> */}
         <ContentWrapper>
           <MenuLogoBox src={logo} />
-          <ContentTitle>Login with client code</ContentTitle>
-          <MenuInput
-            key={1}
-            title={"Client code"}
-            color={"color"}
-            onEnterPress={onAssetPress}
-            onFocus={onAssetFocus}
-          />
-          <MenuInput
-            key={2}
-            title={"Device code"}
-            color={"color"}
-            onEnterPress={onAssetPress}
-            onFocus={onAssetFocus}
-          />
-          <MenuItem />
+          {step === "clientCode" && (
+            <>
+              <ContentTitle>Client Code</ContentTitle>
+              <MenuInput
+                key={1}
+                title={"AT5872"}
+                color={"color"}
+                onEnterPress={onAssetPress}
+                onFocus={onAssetFocus}
+              />
+              <MenuItem title="ENTER" onClick={() => setStep("deviceCode")} />
+            </>
+          )}
+          {step === "deviceCode" && (
+            <>
+              <ContentTitle>Device Code</ContentTitle>
+              <MenuInput
+                key={2}
+                title={"P548C"}
+                color={"color"}
+                onEnterPress={onAssetPress}
+                onFocus={onAssetFocus}
+              />
+              <MenuItem title="CONNECT" onClick={() => setStep("clientCode")} />
+            </>
+          )}
           <Divider />
           <ContentSubtitle>
             If you don't have an account, go to the site and create a new
